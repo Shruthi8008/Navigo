@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/theme_provider.dart';
+import 'screens/splash_screen.dart';
 import 'screens/sos_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/profile_screen.dart';
@@ -42,6 +43,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final PageController _pageController = PageController(initialPage: 1);
+  bool _showSplash = true;
 
   void _onItemTapped(int index) {
     _pageController.animateToPage(
@@ -59,6 +61,12 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showSplash) {
+      return SplashScreen(
+        onComplete: () => setState(() => _showSplash = false),
+      );
+    }
+
     return Scaffold(
       body: PageView(
         controller: _pageController,
