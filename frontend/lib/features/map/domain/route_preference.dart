@@ -1,0 +1,1 @@
+enum RoutePreference { shortest, safest }
