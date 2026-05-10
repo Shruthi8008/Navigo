@@ -29,7 +29,11 @@ class NavigoApp extends ConsumerWidget {
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeMode,
-      home: const MainScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/home': (context) => const MainScreen(),
+      },
     );
   }
 }
@@ -43,7 +47,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final PageController _pageController = PageController(initialPage: 1);
-  bool _showSplash = true;
 
   void _onItemTapped(int index) {
     _pageController.animateToPage(
@@ -61,12 +64,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) {
-      return SplashScreen(
-        onComplete: () => setState(() => _showSplash = false),
-      );
-    }
-
     return Scaffold(
       body: PageView(
         controller: _pageController,
