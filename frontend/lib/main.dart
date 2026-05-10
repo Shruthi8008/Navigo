@@ -4,9 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
-import 'screens/sos_screen.dart';
-import 'screens/map_screen.dart';
-import 'screens/profile_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
