@@ -80,7 +80,7 @@ class MapSearchService {
       final response = await _client.get(
         uri,
         headers: {
-          'User-Agent': 'secmap-app/1.0',
+          'User-Agent': 'navigo-app/1.0',
           'Accept': 'application/json',
         },
       );

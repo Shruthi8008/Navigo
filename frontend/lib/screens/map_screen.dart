@@ -439,7 +439,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.secmap',
+                userAgentPackageName: 'com.navigo.app',
               ),
               RichAttributionWidget(
                 attributions: [
