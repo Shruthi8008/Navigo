@@ -7,6 +7,7 @@ class LocationState {
     this.errorMessage,
     this.permissionDeniedForever = false,
     this.locationServiceDisabled = false,
+    this.isNavigating = false,
   });
 
   final LatLng? currentLocation;
@@ -14,6 +15,7 @@ class LocationState {
   final String? errorMessage;
   final bool permissionDeniedForever;
   final bool locationServiceDisabled;
+  final bool isNavigating;
 
   bool get hasLocation => currentLocation != null;
 
@@ -24,6 +26,7 @@ class LocationState {
     bool clearError = false,
     bool? permissionDeniedForever,
     bool? locationServiceDisabled,
+    bool? isNavigating,
   }) {
     return LocationState(
       currentLocation: currentLocation ?? this.currentLocation,
@@ -33,6 +36,7 @@ class LocationState {
           permissionDeniedForever ?? this.permissionDeniedForever,
       locationServiceDisabled:
           locationServiceDisabled ?? this.locationServiceDisabled,
+      isNavigating: isNavigating ?? this.isNavigating,
     );
   }
 }

@@ -10,6 +10,7 @@ import '../features/map/application/community_controller.dart';
 import '../features/map/application/location_controller.dart';
 import '../features/map/application/route_controller.dart';
 import '../features/map/data/map_search_service.dart';
+import '../features/map/domain/location_state.dart';
 import '../features/map/domain/place_suggestion.dart';
 import '../features/map/domain/route_preference.dart';
 import '../features/map/domain/route_state.dart';
@@ -71,6 +72,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       if (previousLocation == null) {
         _mapController.move(nextLocation, _currentZoom);
       }
+
+      if (routeState.isNavigating) {
+        _updateNavigationProgress(nextLocation, routeState);
+      }
     });
 
     _routeSubscription = ref.listenManual(routeControllerProvider, (
@@ -95,6 +100,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _tappedPlace = next.selectedPlace;
       }
     });
+  }
+
+  void _updateNavigationProgress(LatLng currentLocation, RouteState routeState) {
+    if (!routeState.isNavigating || routeState.routePoints.isEmpty) return;
+
+    final routeController = ref.read(routeControllerProvider.notifier);
+    final currentIndex = routeState.navigationStepIndex;
+    if (currentIndex >= routeState.routePoints.length - 1) return;
+
+    final nextWaypoint = routeState.routePoints[currentIndex + 1];
+    const threshold = 0.0003;
+
+    if ((currentLocation.latitude - nextWaypoint.latitude).abs() < threshold &&
+        (currentLocation.longitude - nextWaypoint.longitude).abs() < threshold) {
+      routeController.nextNavigationStep();
+    }
   }
 
   @override
@@ -344,8 +365,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _promptLoginIfNeeded() async {
-    if (ref.read(authProvider).valueOrNull != null) {
+    final authState = ref.read(authProvider);
+    if (authState.valueOrNull != null) {
       return;
+    }
+
+    if (authState.isLoading) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (ref.read(authProvider).valueOrNull != null) {
+        return;
+      }
     }
 
     if (!mounted) {
@@ -413,6 +442,242 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     return minutes == 0 ? '$hours hr' : '$hours hr $minutes min';
   }
 
+  Widget _buildRouteInfoPanel(RouteState routeState) {
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.directions_rounded, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatDistance(routeState.distanceMeters),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        _formatDuration(routeState.durationSeconds),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    ref.read(routeControllerProvider.notifier).startNavigation();
+                    _moveToCurrentLocation();
+                  },
+                  icon: const Icon(Icons.navigation_rounded, size: 18),
+                  label: const Text('Start'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+            if (routeState.destinationLabel.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.place_rounded, color: Colors.orange, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      routeState.destinationLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationPanel(RouteState routeState, LocationState locationState) {
+    final progress = routeState.routePoints.isEmpty
+        ? 0.0
+        : (routeState.navigationStepIndex / (routeState.routePoints.length - 1)).clamp(0.0, 1.0);
+    final remainingDistance = routeState.distanceMeters != null
+        ? (routeState.distanceMeters! * (1 - progress)).clamp(0.0, routeState.distanceMeters!)
+        : null;
+    final remainingDuration = routeState.durationSeconds != null
+        ? (routeState.durationSeconds! * (1 - progress)).clamp(0.0, routeState.durationSeconds!)
+        : null;
+
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: 16,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.shade700,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatDistance(remainingDistance),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          '${_formatDuration(remainingDuration)} remaining',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      ref.read(routeControllerProvider.notifier).stopNavigation();
+                    },
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                borderRadius: BorderRadius.circular(4),
+                minHeight: 6,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ref.read(routeControllerProvider.notifier).previousNavigationStep();
+                        final currentPoint = ref.read(routeControllerProvider.notifier).currentNavigationPoint;
+                        if (currentPoint != null) {
+                          _mapController.move(currentPoint, _streetZoom);
+                        }
+                      },
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: const Text('Back'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        _moveToCurrentLocation();
+                        final nextPoint = ref.read(routeControllerProvider.notifier).nextNavigationPoint;
+                        if (nextPoint != null) {
+                          ref.read(routeControllerProvider.notifier).nextNavigationStep();
+                        }
+                      },
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                      label: const Text('Next Step'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.green.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (routeState.destinationLabel.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.flag_rounded, color: Colors.white, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        routeState.destinationLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -449,16 +714,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ],
               ),
-              if (routeState.hasRoute)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: routeState.routePoints,
-                      strokeWidth: 5,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ],
+          if (routeState.hasRoute)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: routeState.routePoints,
+                  strokeWidth: 5,
+                  color: routeState.isNavigating
+                      ? Colors.green
+                      : theme.colorScheme.primary,
                 ),
+              ],
+            ),
               MarkerLayer(
                 markers: [
                   if (locationState.currentLocation != null)
@@ -520,12 +787,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   .read(routeControllerProvider.notifier)
                   .clearField(RouteField.destination);
             },
+            onClearDestinationWithText: () {
+              _destinationController.clear();
+              ref
+                  .read(routeControllerProvider.notifier)
+                  .clearField(RouteField.destination);
+            },
+            onClearSource: () {
+              ref
+                  .read(routeControllerProvider.notifier)
+                  .clearField(RouteField.source);
+            },
+            onClearSourceWithText: () {
+              _sourceController.clear();
+              ref
+                  .read(routeControllerProvider.notifier)
+                  .clearField(RouteField.source);
+            },
           ),
           MapControls(
             onZoomIn: _zoomIn,
             onZoomOut: _zoomOut,
             onRecenter: _moveToCurrentLocation,
           ),
+          if (routeState.hasRoute && !routeState.isNavigating)
+            _buildRouteInfoPanel(routeState),
+          if (routeState.isNavigating)
+            _buildNavigationPanel(routeState, locationState),
           if (locationState.isLoading || routeState.isRouting)
             const Positioned(
               top: 188,

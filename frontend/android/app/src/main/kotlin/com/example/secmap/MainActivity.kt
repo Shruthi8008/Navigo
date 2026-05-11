@@ -1,4 +1,4 @@
-package com.navigo.app
+package com.example.secmap
 
 import io.flutter.embedding.android.FlutterActivity
 

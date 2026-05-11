@@ -50,7 +50,7 @@ class LocationController extends Notifier<LocationState> {
           Geolocator.getPositionStream(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.high,
-              distanceFilter: 10,
+              distanceFilter: 5,
             ),
           ).listen(
             _updateLocation,
@@ -73,6 +73,32 @@ class LocationController extends Notifier<LocationState> {
         errorMessage: 'Unable to fetch your current location.',
       );
     }
+  }
+
+  void startNavigation() {
+    state = state.copyWith(isNavigating: true);
+    _restartStream();
+  }
+
+  void stopNavigation() {
+    state = state.copyWith(isNavigating: false);
+  }
+
+  void _restartStream() async {
+    await _positionSubscription?.cancel();
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen(
+      _updateLocation,
+      onError: (Object error) {
+        state = state.copyWith(
+          errorMessage: 'Unable to track live location updates.',
+        );
+      },
+    );
   }
 
   Future<void> openAppSettings() => Geolocator.openAppSettings();

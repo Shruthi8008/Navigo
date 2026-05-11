@@ -211,4 +211,38 @@ class RouteController extends Notifier<RouteState> {
   void clearSuggestions() {
     state = state.copyWith(suggestions: const [], isSearching: false);
   }
+
+  void startNavigation() {
+    if (state.routePoints.isEmpty) return;
+    state = state.copyWith(isNavigating: true, navigationStepIndex: 0);
+  }
+
+  void stopNavigation() {
+    state = state.copyWith(isNavigating: false, navigationStepIndex: 0);
+  }
+
+  void nextNavigationStep() {
+    if (state.navigationStepIndex < state.routePoints.length - 1) {
+      state = state.copyWith(navigationStepIndex: state.navigationStepIndex + 1);
+    }
+  }
+
+  void previousNavigationStep() {
+    if (state.navigationStepIndex > 0) {
+      state = state.copyWith(navigationStepIndex: state.navigationStepIndex - 1);
+    }
+  }
+
+  LatLng? get currentNavigationPoint {
+    if (!state.isNavigating || state.routePoints.isEmpty) return null;
+    final index = state.navigationStepIndex.clamp(0, state.routePoints.length - 1);
+    return state.routePoints[index];
+  }
+
+  LatLng? get nextNavigationPoint {
+    if (!state.isNavigating || state.routePoints.isEmpty) return null;
+    final nextIndex = (state.navigationStepIndex + 1).clamp(0, state.routePoints.length - 1);
+    if (nextIndex == state.navigationStepIndex) return null;
+    return state.routePoints[nextIndex];
+  }
 }

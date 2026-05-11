@@ -18,6 +18,9 @@ class RouteSearchPanel extends StatelessWidget {
     required this.onSuggestionSelected,
     required this.onUseCurrentLocation,
     required this.onClearDestination,
+    required this.onClearDestinationWithText,
+    required this.onClearSource,
+    required this.onClearSourceWithText,
   });
 
   final TextEditingController sourceController;
@@ -31,6 +34,9 @@ class RouteSearchPanel extends StatelessWidget {
   onSuggestionSelected;
   final VoidCallback onUseCurrentLocation;
   final VoidCallback onClearDestination;
+  final VoidCallback onClearDestinationWithText;
+  final VoidCallback onClearSource;
+  final VoidCallback onClearSourceWithText;
 
   @override
   Widget build(BuildContext context) {
@@ -71,13 +77,32 @@ class RouteSearchPanel extends StatelessWidget {
                   suffix: destinationController.text.isEmpty
                       ? null
                       : IconButton(
-                          onPressed: onClearDestination,
+                          onPressed: onClearDestinationWithText,
                           icon: const Icon(Icons.close_rounded),
                           tooltip: 'Clear destination',
                         ),
                   onTap: () => onFieldTap(RouteField.destination),
                   onChanged: (value) =>
                       onFieldChanged(RouteField.destination, value),
+                ),
+                const SizedBox(height: 8),
+                _SearchInput(
+                  controller: sourceController,
+                  focusNode: sourceFocusNode,
+                  label: 'From',
+                  hintText: 'Search source',
+                  icon: Icons.radio_button_checked_rounded,
+                  iconColor: Colors.teal,
+                  suffix: sourceController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: onClearSourceWithText,
+                          icon: const Icon(Icons.close_rounded),
+                          tooltip: 'Clear source',
+                        ),
+                  onTap: () => onFieldTap(RouteField.source),
+                  onChanged: (value) =>
+                      onFieldChanged(RouteField.source, value),
                 ),
                 if (routeState.isSearching) ...[
                   const SizedBox(height: 12),

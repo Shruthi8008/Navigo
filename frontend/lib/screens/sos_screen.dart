@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SosScreen extends StatelessWidget {
   const SosScreen({super.key});
@@ -52,7 +53,10 @@ class SosScreen extends StatelessWidget {
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.phone_outlined),
-                    onPressed: () {},
+                    onPressed: () {
+                      final uri = Uri(scheme: 'tel', path: contact['number']);
+                      launchUrl(uri);
+                    },
                   ),
                 );
               },

@@ -21,6 +21,8 @@ class RouteState {
     this.durationSeconds,
     this.useCurrentLocationAsSource = true,
     this.routePreference = RoutePreference.shortest,
+    this.isNavigating = false,
+    this.navigationStepIndex = 0,
   });
 
   final LatLng? source;
@@ -37,6 +39,8 @@ class RouteState {
   final double? durationSeconds;
   final bool useCurrentLocationAsSource;
   final RoutePreference routePreference;
+  final bool isNavigating;
+  final int navigationStepIndex;
 
   bool get hasRoute => routePoints.isNotEmpty;
 
@@ -61,6 +65,8 @@ class RouteState {
     bool clearDuration = false,
     bool? useCurrentLocationAsSource,
     RoutePreference? routePreference,
+    bool? isNavigating,
+    int? navigationStepIndex,
   }) {
     return RouteState(
       source: clearSource ? null : source ?? this.source,
@@ -84,6 +90,8 @@ class RouteState {
       useCurrentLocationAsSource:
           useCurrentLocationAsSource ?? this.useCurrentLocationAsSource,
       routePreference: routePreference ?? this.routePreference,
+      isNavigating: isNavigating ?? this.isNavigating,
+      navigationStepIndex: navigationStepIndex ?? this.navigationStepIndex,
     );
   }
 }
