@@ -107,7 +107,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     final routeController = ref.read(routeControllerProvider.notifier);
     final currentIndex = routeState.navigationStepIndex;
-    if (currentIndex >= routeState.routePoints.length - 1) return;
+    if (currentIndex >= routeState.routePoints.length - 1) {
+      if ((currentLocation.latitude - routeState.destination!.latitude).abs() < 0.0005 &&
+          (currentLocation.longitude - routeState.destination!.longitude).abs() < 0.0005) {
+        for (int i = 0; i <= routeState.routePoints.length - 1; i++) {
+          routeController.nextNavigationStep();
+        }
+      }
+      return;
+    }
 
     final nextWaypoint = routeState.routePoints[currentIndex + 1];
     const threshold = 0.0003;
@@ -489,6 +497,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 FilledButton.icon(
                   onPressed: () {
                     ref.read(routeControllerProvider.notifier).startNavigation();
+                    ref.read(locationControllerProvider.notifier).startNavigation();
                     _moveToCurrentLocation();
                   },
                   icon: const Icon(Icons.navigation_rounded, size: 18),
@@ -532,6 +541,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final remainingDuration = routeState.durationSeconds != null
         ? (routeState.durationSeconds! * (1 - progress)).clamp(0.0, routeState.durationSeconds!)
         : null;
+    final isComplete = routeState.navigationStepIndex >= routeState.routePoints.length - 1;
 
     return Positioned(
       left: 16,
@@ -540,7 +550,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.green.shade700,
+          color: isComplete ? Colors.blue.shade700 : Colors.green.shade700,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -564,7 +574,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       shape: BoxShape.circle,
                       color: Colors.white.withValues(alpha: 0.2),
                     ),
-                    child: const Icon(Icons.navigation_rounded, color: Colors.white, size: 28),
+                    child: Icon(
+                      isComplete ? Icons.check_circle_rounded : Icons.navigation_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -572,7 +586,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _formatDistance(remainingDistance),
+                          isComplete
+                              ? 'You have arrived!'
+                              : _formatDistance(remainingDistance),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -580,11 +596,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ),
                         ),
                         Text(
-                          '${_formatDuration(remainingDuration)} remaining',
+                          isComplete
+                              ? routeState.destinationLabel
+                              : '${_formatDuration(remainingDuration)} remaining',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.85),
                             fontSize: 14,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -592,6 +612,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   IconButton(
                     onPressed: () {
                       ref.read(routeControllerProvider.notifier).stopNavigation();
+                      ref.read(locationControllerProvider.notifier).stopNavigation();
                     },
                     icon: const Icon(Icons.close_rounded, color: Colors.white),
                     style: IconButton.styleFrom(
@@ -615,10 +636,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         ref.read(routeControllerProvider.notifier).previousNavigationStep();
-                        final currentPoint = ref.read(routeControllerProvider.notifier).currentNavigationPoint;
-                        if (currentPoint != null) {
-                          _mapController.move(currentPoint, _streetZoom);
-                        }
                       },
                       icon: const Icon(Icons.arrow_back_rounded),
                       label: const Text('Back'),
@@ -633,15 +650,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   Expanded(
                     flex: 2,
                     child: FilledButton.icon(
-                      onPressed: () {
-                        _moveToCurrentLocation();
+                      onPressed: isComplete ? null : () {
                         final nextPoint = ref.read(routeControllerProvider.notifier).nextNavigationPoint;
                         if (nextPoint != null) {
                           ref.read(routeControllerProvider.notifier).nextNavigationStep();
                         }
                       },
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      label: const Text('Next Step'),
+                      icon: Icon(isComplete ? Icons.check_rounded : Icons.arrow_forward_rounded),
+                      label: Text(isComplete ? 'Done' : 'Next'),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.green.shade700,
@@ -651,26 +667,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ],
               ),
-              if (routeState.destinationLabel.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.flag_rounded, color: Colors.white, size: 16),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        routeState.destinationLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
